@@ -1,0 +1,36 @@
+{
+    "name": "heavensloop/laravel-data-transformer",
+    "description": "A data transformation tool for laravel",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Popsana Barida",
+            "email": "popsyjunior@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Heavensloop\\DataTransformer\\": "src/",
+            "Heavensloop\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Heavensloop\\DataTransformer\\DataTransformServiceProvider"
+            ],
+            "aliases": {
+                "DataTransformer": "Heavensloop\\DataTransformer"
+            }
+        }
+    },
+    "require-dev": {
+        "orchestra/testbench": "5.x-dev"
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "@php ./vendor/bin/testbench package:discover --ansi"
+        ]
+    }
+}

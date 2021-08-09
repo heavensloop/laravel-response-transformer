@@ -2,44 +2,65 @@
 
 namespace Heavensloop\DataTransformer;
 
-use Facade\Ignition\Support\ComposerClassMap;
 use Illuminate\Container\RewindableGenerator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class ResponseTransformer
 {
     private $transformers;
-    private $transformType;
+    private $loadedTransformer;
+    private $request;
 
-    public function __construct(RewindableGenerator $transformerGenerator, Request $request)
+    const PARAMETER_TYPE_ROUTE = 'route-parameter';
+    const PARAMETER_TYPE_QUERY = 'query-parameter';
+
+    public function __construct(RewindableGenerator $transformers, Request $request)
     {
-        $this->transformType = $request->route('transformation');
-        $transformerIterator = $transformerGenerator->getIterator();
+        $this->request = $request;
 
-        foreach ($transformerIterator as $key => $transformerClass) {
-            $this->transformers[] = $transformerClass;
-        }
+        $this->transformers = $transformers;
+    }
+
+    public function getTransformer(): TransformerInterface
+    {
+        return $this->loadedTransformer ?: $this->loadTransformer();
     }
 
     public function apply($dataSource, array $options = [])
     {
-        if (!$this->transformType) {
-            return $this->defaultTransform($dataSource);
-        }
-
-        $transformer = collect($this->transformers)->filter(function (TransformerInterface $transformer) {
-            return $transformer->applies($this->transformType);
-        })->first();
-
-        if (!$transformer) {
-            return $this->defaultTransform($dataSource);;
-        }
+        // Load the transformer
+        $transformer = $this->loadTransformer();
 
         return $transformer
             ->setOptions($options)
-            ->getTransform($dataSource);
+            ->getTransformed($dataSource);
+    }
+
+    protected function loadTransformer(): TransformerInterface
+    {
+        $transformationName = $this->getTransformationName();
+
+        return $this->loadedTransformer = collect($this->transformers)
+            ->filter(function (TransformerInterface $transformer) use ($transformationName) {
+                return $transformer->applies($transformationName);
+            })->first();
+    }
+
+    private function getTransformationName(): string
+    {
+        $parameterName = config('dto.parameter_name', 'transformation');
+        $inputType = config('dto.parameter_type', 'query');
+        $name = "";
+
+        switch ($inputType) {
+            case (self::PARAMETER_TYPE_ROUTE):
+                $name = $this->request->route($parameterName, "");
+            default:
+                $name = $this->request->get($parameterName, "");
+        }
+
+        return $name;
     }
 
     private function defaultTransform($dataSource)

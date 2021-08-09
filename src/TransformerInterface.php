@@ -4,9 +4,6 @@ namespace Heavensloop\DataTransformer;
 
 interface TransformerInterface
 {
-    protected $preTransforms = [];
-    protected $postTransforms = [];
-
     /**
      * Checks if a transform format applies to the transformer
      *
@@ -21,7 +18,9 @@ interface TransformerInterface
      * @param [type] $dataOrQuery
      * @return boolean
      */
-    public function transform($dataOrQuery);
+    public function transform($dataSource);
 
-    public function setOptions(array $options=[]): TransformerInterface;
+    public function setOptions(?array $options): TransformerInterface;
+
+    public function getTransformed($dataSource);
 }

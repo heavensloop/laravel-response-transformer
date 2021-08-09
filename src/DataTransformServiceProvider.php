@@ -2,11 +2,13 @@
 
 namespace Heavensloop\DataTransformer;
 
-use Facade\Ignition\Support\ComposerClassMap;
-use Heavensloop\DataTransformer\Commands\GenerateResponseCommand;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
+use Facade\Ignition\Support\ComposerClassMap;
+use Illuminate\Contracts\Foundation\Application;
+use Heavensloop\DataTransformer\Commands\GenerateResponseCommand;
+use Heavensloop\DataTransformer\Transformers\DefaultResponseTransformer;
 
 class DataTransformServiceProvider extends ServiceProvider
 {
@@ -23,21 +25,27 @@ class DataTransformServiceProvider extends ServiceProvider
 
         $this->app->tag($this->getTransformations(), $tag);
 
-        $this->app->bind(ResponseTransformer::class, function ($app) use ($tag) {
-            $request = $app->get(Request::class);
-            return new ResponseTransformer($app->tagged($tag), $request);
+        // dd($this->app->tagged($tag));
+
+        $this->app->bind(ResponseTransformer::class, function (Application $app) use ($tag) {
+            $requestInstance = $app->get(Request::class);
+            return new ResponseTransformer($app->tagged($tag), $requestInstance);
         });
     }
 
     private function getTransformations(): array
     {
-        $transformerType = config('dto.location');
+        $transformerLocation = config('dto.location');
         $namespaces = array_keys((new ComposerClassMap)->listClasses());
 
-        return collect($namespaces)->filter(function ($item) use ($transformerType) {
-            $classPath = str_replace("/", "\\", ucwords($transformerType));
+        return collect($namespaces)->filter(function ($item) use ($transformerLocation) {
+            $classPath = str_replace("/", "\\", ucwords($transformerLocation));
             return Str::contains($item, "{$classPath}\\") && Str::endsWith($item, "Transformer");
-        })->values()->toArray();
+        })
+            ->values()
+            // Add the default response transformer
+            ->push(DefaultResponseTransformer::class)
+            ->toArray();
     }
 
     /**
